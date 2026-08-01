@@ -1,0 +1,90 @@
+{
+  "name": "@ainative/browser-mcp",
+  "version": "1.1.2",
+  "description": "AINative Browser Agent MCP Server — 6 AI-powered browser automation tools for web interaction, structured data extraction, page validation, multi-step tasks, and memory enrichment. Auto-detects ZeroLocal vs Cloud.",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "ainative-browser-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test tests/*.test.js",
+    "test:coverage": "c8 node --test tests/*.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "mcp-server-hosting",
+    "model-context-protocol",
+    "model-context-protocol-server",
+    "browser-automation",
+    "browser-agent",
+    "web-automation",
+    "ainative",
+    "zerodb",
+    "openclaw",
+    "web-scraping",
+    "data-extraction",
+    "structured-data",
+    "playwright",
+    "headless-browser",
+    "ai-agent",
+    "agent-tools",
+    "agentic-ai",
+    "memory-enrichment",
+    "agent-memory",
+    "llm",
+    "ai",
+    "ai-tool-calling",
+    "claude",
+    "claude-desktop",
+    "claude-code",
+    "claude-ai-agents",
+    "windsurf",
+    "cursor",
+    "local-first",
+    "local-first-ai",
+    "zerolocal",
+    "production-ready"
+  ],
+  "author": {
+    "name": "AINative Studio",
+    "email": "toby@rely.ventures",
+    "url": "https://ainative.studio"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AINative-Studio/ainative-browser-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AINative-Studio/ainative-browser-mcp/issues"
+  },
+  "homepage": "https://github.com/AINative-Studio/ainative-browser-mcp#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "c8": "^12.0.0"
+  },
+  "files": [
+    "index.js",
+    "src/",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "mcpName": "io.github.AINative-Studio/ainative-browser-mcp"
+}
