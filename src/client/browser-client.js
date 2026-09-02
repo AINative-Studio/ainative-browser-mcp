@@ -44,22 +44,48 @@ export class BrowserClient {
     return cloudUrl;
   }
 
+  /**
+   * Log in with username/password and cache the resulting session token.
+   * Split out from authenticate() so a 401-on-API-key retry can call this
+   * directly without re-checking `this.apiKey` first (see authenticate()'s
+   * own doc for why that check order matters).
+   */
+  async loginWithPassword() {
+    const response = await axios.post(`${this.apiUrl}/api/v1/auth/login`, {
+      email: this.username,
+      password: this.password
+    });
+    this.token = response.data.access_token;
+    this.tokenExpiry = Date.now() + (50 * 60 * 1000);
+    // Once we've had to fall back to a real login, stop trusting the static
+    // key for the rest of this process's lifetime — it's already proven
+    // stale/invalid once; retrying it on every subsequent 401 would just
+    // repeat the same failed request pointlessly. `usingFallbackAuth` also
+    // tells request() to send Authorization: Bearer instead of X-API-Key.
+    this.usingFallbackAuth = true;
+    console.error('✅ Authenticated with username/password (fallback from a rejected API key)');
+  }
+
   async authenticate() {
-    if (this.apiKey) {
+    if (this.apiKey && !this.usingFallbackAuth) {
       this.token = this.apiKey;
       this.tokenExpiry = null;
       console.error('✅ Using API key authentication');
       return;
     }
     if (this.username && this.password) {
-      const response = await axios.post(`${this.apiUrl}/api/v1/auth/login`, {
-        email: this.username,
-        password: this.password
-      });
-      this.token = response.data.access_token;
-      this.tokenExpiry = Date.now() + (50 * 60 * 1000);
-      console.error('✅ Authenticated with username/password');
+      await this.loginWithPassword();
       return;
+    }
+    if (this.apiKey) {
+      // usingFallbackAuth is true but there's no username/password to fall
+      // back to — nothing left to try. Surface a clear, actionable error
+      // rather than silently re-using the same key that already failed.
+      throw new Error(
+        'AINATIVE_API_KEY was rejected (401) and no AINATIVE_USERNAME/AINATIVE_PASSWORD ' +
+        'is configured to fall back to. The API key is likely expired, revoked, or invalid ' +
+        '— generate a fresh one, or set username/password credentials as a fallback.'
+      );
     }
     throw new Error('Either AINATIVE_API_KEY or (AINATIVE_USERNAME + AINATIVE_PASSWORD) are required');
   }
@@ -73,7 +99,7 @@ export class BrowserClient {
   async request(method, path, data = null) {
     await this.ensureAuthenticated();
     const headers = { 'Content-Type': 'application/json' };
-    if (this.apiKey) {
+    if (this.apiKey && !this.usingFallbackAuth) {
       headers['X-API-Key'] = this.token;
     } else {
       headers['Authorization'] = `Bearer ${this.token}`;
@@ -87,8 +113,25 @@ export class BrowserClient {
       if (error.response?.status === 401 && !config._retried) {
         this.token = null;
         this.tokenExpiry = null;
-        await this.authenticate();
-        if (this.apiKey) headers['X-API-Key'] = this.token;
+        // A rejected static API key can NEVER be fixed by re-authenticating
+        // with itself — authenticate() would just re-assign the same dead
+        // value to this.token and the retry would 401 again identically.
+        // If real username/password credentials are ALSO configured, use
+        // them for the retry instead of the API key that just failed.
+        // Otherwise, surface authenticate()'s clear "no fallback available"
+        // error immediately rather than burning a retry on the same key.
+        if (this.apiKey && !this.usingFallbackAuth) {
+          if (this.username && this.password) {
+            console.error('⚠️  API key rejected (401) — falling back to username/password login');
+            await this.loginWithPassword();
+          } else {
+            this.usingFallbackAuth = true; // force authenticate() past the dead-key branch
+            await this.authenticate();
+          }
+        } else {
+          await this.authenticate();
+        }
+        if (this.apiKey && !this.usingFallbackAuth) headers['X-API-Key'] = this.token;
         else headers['Authorization'] = `Bearer ${this.token}`;
         config._retried = true;
         const retry = await axios(config);
